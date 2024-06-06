@@ -1,5 +1,5 @@
 import psycopg2
-from dictionary.city_dictionary import CityDictionary
+from src.city_dictionary import CityDictionary
 
 
 class DatabaseModel:
@@ -29,6 +29,11 @@ class DatabaseModel:
             cursor.execute("INSERT INTO cities (id, name) VALUES (%s, %s)", (city_id, city_name,))
             self.connection.commit()
 
+    def update_city(self, city_id, new_city_name):
+        with self.connection.cursor() as cursor:
+            cursor.execute("UPDATE cities SET name = %s WHERE id = %s", (new_city_name, city_id,))
+            self.connection.commit()
+
     def delete_city(self, city_id):  # Changed parameter name
         with self.connection.cursor() as cursor:
             cursor.execute("DELETE FROM cities WHERE id = %s", (city_id,))
@@ -46,8 +51,8 @@ class DataView:
         if not data:
             print("Die Liste ist leer.")
         else:
-            for row in data:
-                print(f"{row[0]}: {row[1]}")
+            for city_id, city_name in data.items():
+                print(f"{city_id}: {city_name}")
 
 
 class DataController:
@@ -65,14 +70,23 @@ class DataController:
     def get_and_display_data(self):
         self.view.display_data(self.city_dict.get_cities())  # Display data from dictionary
 
-    def add_city(self, city_id, city_name):  # Changed parameter name
-        self.city_dict.add_city(city_id, city_name)  # Add city to dictionary
+    def add_city(self, city_id, city_name):  # Add the city_id and city_name parameters
+        if city_id not in self.city_dict.get_cities():
+            self.city_dict.add_city(city_id, city_name)  # Add city to dictionary
+        else:
+            print(f"Die Stadt-ID {city_id} ist bereits in Verwendung. Bitte wählen Sie eine andere ID.")
 
     def delete_city(self, city_id):  # Changed parameter name
         self.city_dict.delete_city(city_id)  # Delete city from dictionary
+
+    def update_city(self, city_id, new_city_name):
+        self.city_dict.update_city(city_id, new_city_name)  # Update city in dictionary
 
     def save_data_to_db(self):
         self.model.delete_all_data()  # Delete all data from database
         cities = self.city_dict.get_cities()  # Get data from dictionary
         for city_id, city_name in cities.items():
-            self.model.insert_data(city_id, city_name)  # Insert each city into the database
+            if city_id in self.model.get_data():
+                self.model.update_city(city_id, city_name)  # Update city in the database
+            else:
+                self.model.insert_data(city_id, city_name)  # Insert each city into the database
